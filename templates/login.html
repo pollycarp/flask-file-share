@@ -15,14 +15,20 @@
   <div id="loader">Loading...</div>
 
   <script>
+    // ✅ Your Firebase Web App Configuration
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID"
+      apiKey: "AIzaSyDUxDFGe61FMX_MGw1axpVNKsPSPPZ38bo",
+      authDomain: "flask-file-share.firebaseapp.com",
+      projectId: "flask-file-share",
+      storageBucket: "flask-file-share.appspot.com",
+      messagingSenderId: "647016289100",
+      appId: "1:647016289100:web:319b84a0439d005c4af5e9"
     };
 
+    // ✅ Initialize Firebase
     firebase.initializeApp(firebaseConfig);
 
+    // ✅ FirebaseUI Config
     const uiConfig = {
       callbacks: {
         signInSuccessWithAuthResult: function(authResult, redirectUrl) {
@@ -39,7 +45,7 @@
               }
             });
           });
-          return false;
+          return false; // Don't redirect automatically
         }
       },
       signInFlow: 'popup',
@@ -49,6 +55,7 @@
       ]
     };
 
+    // ✅ Initialize Firebase UI
     const ui = new firebaseui.auth.AuthUI(firebase.auth());
     ui.start('#firebaseui-auth-container', uiConfig);
   </script>
