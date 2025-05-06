@@ -1,0 +1,24 @@
+{% include 'components/navbar.html' %}
+
+<h2 class="mb-4">📂 Upload History</h2>
+
+<table class="table table-striped table-bordered">
+  <thead class="table-light">
+    <tr>
+      <th>File Name</th>
+      <th>Uploaded By</th>
+      <th>Time</th>
+      <th>Download</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for entry in history %}
+    <tr>
+      <td>{{ entry.filename }}</td>
+      <td>{{ entry.owner }}</td>
+      <td>{{ entry.timestamp.strftime('%Y-%m-%d %H:%M:%S') if entry.timestamp else 'N/A' }}</td>
+      <td><a href="{{ entry.url }}" target="_blank" class="btn btn-sm btn-outline-primary">Open</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

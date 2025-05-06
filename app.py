@@ -135,6 +135,27 @@ def view_downloads():
     return render_template('downloads.html', history=history)
 
 
+@app.route('/admin/uploads')
+def view_uploads():
+    admin_email = "markpollycarp@gmail.com"
+    if session.get('user_email') != admin_email:
+        abort(403)
+
+    uploads = db.collection('files').order_by('uploadedAt', direction=firestore.Query.DESCENDING).stream()
+
+    history = []
+    for entry in uploads:
+        data = entry.to_dict()
+        history.append({
+            'filename': data.get('filename'),
+            'owner': data.get('owner'),
+            'timestamp': data.get('uploadedAt'),
+            'url': data.get('url')
+        })
+
+    return render_template('uploads.html', history=history)
+
+
 @app.route('/logout')
 def logout():
     session.clear()
