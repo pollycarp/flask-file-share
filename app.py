@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, auth, firestore, storage
+from flask import abort
 
 # Load environment variables
 load_dotenv()
@@ -22,11 +23,13 @@ firebase_admin.initialize_app(cred, {
 db = firestore.client()
 bucket = storage.bucket()
 
+
 # ---------------- ROUTES ----------------
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/login')
 def login():
@@ -73,6 +76,7 @@ def dashboard():
                 'uploadedAt': firestore.SERVER_TIMESTAMP
             })
 
+            # Generate a shareable link
             link = url_for('download', file_id=file_id, _external=True)
             return render_template('dashboard.html', link=link)
 
@@ -99,6 +103,36 @@ def download(file_id):
         return redirect(file_data['url'])
     else:
         return render_template('404.html'), 404
+
+
+@app.route('/admin/downloads')
+def view_downloads():
+    # Only allow you (the app owner) to view
+    admin_email = "markpollycarp@gmail.com"
+    if session.get('user_email') != admin_email:
+        abort(403)  # Forbidden
+
+    # Get download logs from Firestore
+    downloads = db.collection('downloads').order_by('timestamp', direction=firestore.Query.DESCENDING).stream()
+
+    history = []
+    for entry in downloads:
+        data = entry.to_dict()
+        file_id = data.get('file_id')
+        viewer = data.get('viewer')
+        timestamp = data.get('timestamp')
+
+        # Fetch the file name from the files collection
+        file_doc = db.collection('files').document(file_id).get()
+        filename = file_doc.to_dict().get('filename') if file_doc.exists else '[Deleted]'
+
+        history.append({
+            'filename': filename,
+            'viewer': viewer,
+            'timestamp': timestamp
+        })
+
+    return render_template('downloads.html', history=history)
 
 
 @app.route('/logout')
