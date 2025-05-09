@@ -49,6 +49,13 @@ def set_user():
         return jsonify({'status': 'error', 'message': str(e)}), 401
 
 
+@app.route('/get_redirect')
+def get_redirect():
+    """Return the stored redirect URL after login"""
+    next_url = session.pop('redirect_after_login', None)
+    return jsonify({'next': next_url})
+
+
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
     if 'user_email' not in session:
@@ -86,6 +93,7 @@ def dashboard():
 @app.route('/download/<file_id>')
 def download(file_id):
     if 'user_email' not in session:
+        session['redirect_after_login'] = request.path  # store intended path
         return redirect(url_for('login'))
 
     # Fetch file info
@@ -107,12 +115,10 @@ def download(file_id):
 
 @app.route('/admin/downloads')
 def view_downloads():
-    # Only allow you (the app owner) to view
     admin_email = "markpollycarp@gmail.com"
     if session.get('user_email') != admin_email:
-        abort(403)  # Forbidden
+        abort(403)
 
-    # Get download logs from Firestore
     downloads = db.collection('downloads').order_by('timestamp', direction=firestore.Query.DESCENDING).stream()
 
     history = []
@@ -122,7 +128,6 @@ def view_downloads():
         viewer = data.get('viewer')
         timestamp = data.get('timestamp')
 
-        # Fetch the file name from the files collection
         file_doc = db.collection('files').document(file_id).get()
         filename = file_doc.to_dict().get('filename') if file_doc.exists else '[Deleted]'
 
