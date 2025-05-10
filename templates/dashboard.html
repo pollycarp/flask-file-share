@@ -10,8 +10,20 @@
 
   {% include 'components/navbar.html' %}
 
-  <h2 class="mb-4">📤Upload a File</h2>
+  <h2 class="mb-4">📤 Upload a File</h2>
 
+  <!-- ✅ Flash Messages -->
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert alert-info">
+        {% for message in messages %}
+          <p class="mb-0">{{ message }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- ✅ File Upload Form -->
   <form method="POST" enctype="multipart/form-data" class="mb-3">
     <div class="mb-3">
       <label for="file" class="form-label">Select File</label>
@@ -20,6 +32,10 @@
     <button type="submit" class="btn btn-success">Upload</button>
   </form>
 
+  <!-- 🔗 Go to Downloads Page -->
+  <a href="{{ url_for('downloads') }}" class="btn btn-primary">Go to Downloads</a>
+
+  <!-- Legacy Share Link (optional if still needed) -->
   {% if link %}
     <div class="alert alert-success mt-4">
       ✅ Share this link: <a href="{{ link }}">{{ link }}</a>
@@ -30,12 +46,14 @@
   <script>
     // Dark mode toggle
     const toggleBtn = document.getElementById('toggle-theme');
-    toggleBtn.addEventListener('click', () => {
-      const body = document.body;
-      const current = body.getAttribute('data-bs-theme');
-      const newTheme = current === 'dark' ? 'light' : 'dark';
-      body.setAttribute('data-bs-theme', newTheme);
-    });
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const body = document.body;
+        const current = body.getAttribute('data-bs-theme');
+        const newTheme = current === 'dark' ? 'light' : 'dark';
+        body.setAttribute('data-bs-theme', newTheme);
+      });
+    }
   </script>
 </body>
 </html>

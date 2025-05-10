@@ -6,6 +6,8 @@ from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, auth, firestore, storage
 from flask import abort
+from flask import send_file, flash
+import threading, time
 
 # Load environment variables
 load_dotenv()
@@ -19,7 +21,6 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # ✅ Ensure uploads folder exists
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 
 # Initialize Firebase Admin
 # cred = credentials.Certificate("/var/render/secrets/firebase_key_json")
@@ -69,30 +70,34 @@ def dashboard():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        file = request.files['file']
-        if file:
-            filename = secure_filename(file.filename)
-            local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(local_path)
+        try:
+            file = request.files['file']
+            if file:
+                filename = secure_filename(file.filename)
+                blob_name = f"{uuid.uuid4()}_{filename}"
+                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
 
-            # Upload to Firebase Storage
-            blob = bucket.blob(f'files/{uuid.uuid4()}_{filename}')
-            blob.upload_from_filename(local_path)
-            blob.make_public()
-            file_url = blob.public_url
+                # Save locally to /uploads (make sure folder exists)
+                file.save(local_path)
 
-            # Save file info in Firestore
-            file_id = str(uuid.uuid4())
-            db.collection('files').document(file_id).set({
-                'filename': filename,
-                'url': file_url,
-                'owner': session['user_email'],
-                'uploadedAt': firestore.SERVER_TIMESTAMP
-            })
+                # Upload to Firebase Storage
+                blob = bucket.blob(blob_name)
+                blob.upload_from_filename(local_path)
 
-            # Generate a shareable link
-            link = url_for('download', file_id=file_id, _external=True)
-            return render_template('dashboard.html', link=link)
+                # Save file metadata in Firestore
+                db.collection('files').add({
+                    'original_name': filename,
+                    'blob_name': blob_name,
+                    'owner': session['user_email'],
+                    'uploadedAt': firestore.SERVER_TIMESTAMP
+                })
+
+                flash("File uploaded successfully!")
+                return redirect(url_for('dashboard'))
+
+        except Exception as e:
+            print(f"[UPLOAD ERROR] {e}")
+            flash("Upload failed. Please try again.")
 
     return render_template('dashboard.html')
 
@@ -118,6 +123,47 @@ def download(file_id):
         return redirect(file_data['url'])
     else:
         return render_template('404.html'), 404
+
+
+@app.route('/downloads')
+def downloads():
+    if 'user_email' not in session:
+        return redirect(url_for('login'))
+
+    docs = db.collection('files').order_by('uploadedAt', direction=firestore.Query.DESCENDING).stream()
+    files = []
+    for doc in docs:
+        data = doc.to_dict()
+        files.append({
+            'original_name': data['original_name'],
+            'blob_name': data['blob_name']
+        })
+    return render_template('downloads.html', files=files)
+
+
+@app.route('/download/<blob_name>', methods=['POST'])
+def download_file(blob_name):
+    if 'user_email' not in session:
+        return redirect(url_for('login'))
+
+    original_name = blob_name.split("_", 1)[-1]
+    local_path = os.path.join(app.config['UPLOAD_FOLDER'], original_name)
+
+    # Download from Firebase
+    blob = bucket.blob(blob_name)
+    blob.download_to_filename(local_path)
+
+    flash(f"Download successful! File: {original_name}")
+
+    # Send the file, then delete the temp file in background
+    def cleanup():
+        time.sleep(5)
+        if os.path.exists(local_path):
+            os.remove(local_path)
+
+    threading.Thread(target=cleanup).start()
+
+    return send_file(local_path, as_attachment=True, download_name=original_name)
 
 
 @app.route('/admin/downloads')
