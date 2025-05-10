@@ -16,7 +16,8 @@ app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # Initialize Firebase Admin
-cred = credentials.Certificate("/var/render/secrets/firebase_key_json")
+# cred = credentials.Certificate("/var/render/secrets/firebase_key_json")
+cred = credentials.Certificate("/etc/secrets/firebase_key_json")
 firebase_admin.initialize_app(cred, {
     'storageBucket': os.getenv("FIREBASE_STORAGE_BUCKET", "flask-file-share.appspot.com")
 })
