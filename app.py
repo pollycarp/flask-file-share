@@ -354,6 +354,7 @@ def download_confirm_post():
     flash("✅ Download successful!")
     return render_template("download_confirm.html", filename=original_name)
 
+
 #
 # @app.route('/download/confirm', methods=['POST'])
 # def download_confirm_post():
@@ -364,25 +365,26 @@ def download_confirm_post():
 #     return redirect(url_for('download_file', file_id=file_id))
 #
 #
-# @app.route('/admin/uploads')
-# def view_uploads():
-#     if session.get('user_email') != "markpollycarp@gmail.com":
-#         abort(403)
-#
-#     uploads = db.collection('files').order_by('uploadedAt', direction=firestore.Query.DESCENDING).stream()
-#     history = []
-#     for entry in uploads:
-#         data = entry.to_dict()
-#         file_id = entry.id  # ← use the document ID instead of relying on a possibly missing 'file_id'
-#         history.append({
-#             'filename': data.get('filename'),
-#             'owner': data.get('owner'),
-#             'timestamp': data.get('uploadedAt'),
-#             'link': url_for('download', file_id=file_id, _external=True)
-#         })
-#
-#     return render_template('admin_uploads.html', history=history)
-#
+@app.route('/admin/uploads')
+def view_uploads():
+    if session.get('user_email') != "markpollycarp@gmail.com":
+        abort(403)
+
+    uploads = db.collection('files').order_by('uploadedAt', direction=firestore.Query.DESCENDING).stream()
+    history = []
+    for entry in uploads:
+        data = entry.to_dict()
+        file_id = entry.id  # ← use the document ID instead of relying on a possibly missing 'file_id'
+        history.append({
+            'filename': data.get('filename'),
+            'owner': data.get('owner'),
+            'timestamp': data.get('uploadedAt'),
+            'link': url_for('download', file_id=file_id, _external=True)
+        })
+
+    return render_template('admin_uploads.html', history=history)
+
+
 #
 # @app.route('/download/file/<file_id>')
 # def download_file(file_id):
