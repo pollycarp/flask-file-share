@@ -70,34 +70,30 @@ def dashboard():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        try:
-            file = request.files['file']
-            if file:
-                filename = secure_filename(file.filename)
-                blob_name = f"{uuid.uuid4()}_{filename}"
-                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file = request.files['file']
+        if file:
+            filename = secure_filename(file.filename)
+            local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(local_path)
 
-                # Save locally to /uploads (make sure folder exists)
-                file.save(local_path)
+            # Upload to Firebase Storage
+            blob = bucket.blob(f'files/{uuid.uuid4()}_{filename}')
+            blob.upload_from_filename(local_path)
+            blob.make_public()
+            file_url = blob.public_url
 
-                # Upload to Firebase Storage
-                blob = bucket.blob(blob_name)
-                blob.upload_from_filename(local_path)
+            # Save file info in Firestore
+            file_id = str(uuid.uuid4())
+            db.collection('files').document(file_id).set({
+                'filename': filename,
+                'url': file_url,
+                'owner': session['user_email'],
+                'uploadedAt': firestore.SERVER_TIMESTAMP
+            })
 
-                # Save file metadata in Firestore
-                db.collection('files').add({
-                    'original_name': filename,
-                    'blob_name': blob_name,
-                    'owner': session['user_email'],
-                    'uploadedAt': firestore.SERVER_TIMESTAMP
-                })
-
-                flash("File uploaded successfully!")
-                return redirect(url_for('dashboard'))
-
-        except Exception as e:
-            print(f"[UPLOAD ERROR] {e}")
-            flash("Upload failed. Please try again.")
+            # Generate a shareable link
+            link = url_for('download', file_id=file_id, _external=True)
+            return render_template('dashboard.html', link=link)
 
     return render_template('dashboard.html')
 
