@@ -314,45 +314,45 @@ def dashboard():
 #     file_data = doc.to_dict()
 #     return render_template('download_confirm.html', filename=file_data.get('filename'))
 
-
-@app.route('/download/confirm', methods=['POST'])
-def download_confirm_post():
-    file_id = session.get('pending_download')
-    if not file_id:
-        return redirect(url_for('dashboard'))
-
-    # Fetch file info
-    doc = db.collection('files').document(file_id).get()
-    if not doc.exists:
-        return render_template('404.html'), 404
-
-    file_data = doc.to_dict()
-    blob_name = file_data['blob_name']
-    original_name = file_data['filename']
-
-    # Log download
-    db.collection('downloads').add({
-        'file_id': file_id,
-        'viewer': session['user_email'],
-        'timestamp': firestore.SERVER_TIMESTAMP
-    })
-
-    # Download to temp
-    blob = bucket.blob(blob_name)
-    temp_path = os.path.join('/tmp', original_name)
-    blob.download_to_filename(temp_path)
-
-    # Clean up file after send
-    def cleanup(path):
-        time.sleep(5)
-        if os.path.exists(path):
-            os.remove(path)
-
-    threading.Thread(target=cleanup, args=(temp_path,)).start()
-
-    # ✅ Flash success and show again before redirect
-    flash("✅ Download successful!")
-    return render_template("download_confirm.html", filename=original_name)
+#
+# @app.route('/download/confirm', methods=['POST'])
+# def download_confirm_post():
+#     file_id = session.get('pending_download')
+#     if not file_id:
+#         return redirect(url_for('dashboard'))
+#
+#     # Fetch file info
+#     doc = db.collection('files').document(file_id).get()
+#     if not doc.exists:
+#         return render_template('404.html'), 404
+#
+#     file_data = doc.to_dict()
+#     blob_name = file_data['blob_name']
+#     original_name = file_data['filename']
+#
+#     # Log download
+#     db.collection('downloads').add({
+#         'file_id': file_id,
+#         'viewer': session['user_email'],
+#         'timestamp': firestore.SERVER_TIMESTAMP
+#     })
+#
+#     # Download to temp
+#     blob = bucket.blob(blob_name)
+#     temp_path = os.path.join('/tmp', original_name)
+#     blob.download_to_filename(temp_path)
+#
+#     # Clean up file after send
+#     def cleanup(path):
+#         time.sleep(5)
+#         if os.path.exists(path):
+#             os.remove(path)
+#
+#     threading.Thread(target=cleanup, args=(temp_path,)).start()
+#
+#     # ✅ Flash success and show again before redirect
+#     flash("✅ Download successful!")
+#     return render_template("download_confirm.html", filename=original_name)
 
 
 #
