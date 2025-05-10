@@ -404,11 +404,6 @@ def view_uploads():
     return render_template('uploads.html', history=history)
 
 
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('index'))
-
 #
 # @app.route('/download/file/<file_id>')
 # def download_file(file_id):
