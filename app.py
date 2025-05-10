@@ -13,7 +13,7 @@ load_dotenv()
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
-app.config['UPLOAD_FOLDER'] = '/tmp'
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
 # Initialize Firebase Admin
 # cred = credentials.Certificate("/var/render/secrets/firebase_key_json")
