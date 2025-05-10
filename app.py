@@ -277,6 +277,7 @@ def download(file_id):
         time.sleep(5)
         if os.path.exists(path):
             os.remove(path)
+
     threading.Thread(target=cleanup, args=(temp_path,)).start()
 
     return send_file(temp_path, as_attachment=True, download_name=original_name)
@@ -327,10 +328,10 @@ def view_uploads():
             'filename': data.get('filename'),
             'owner': data.get('owner'),
             'timestamp': data.get('uploadedAt'),
-            'link': url_for('download_confirm', file_id=file_id, _external=True)
+            'link': url_for('download', file_id=file_id, _external=True)
         })
 
-    return render_template('uploads.html', history=history)
+    return render_template('admin_uploads.html', history=history)
 
 
 @app.route('/logout')
