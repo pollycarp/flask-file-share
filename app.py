@@ -283,37 +283,76 @@ def download(file_id):
     return send_file(temp_path, as_attachment=True, download_name=original_name)
 
 
+# @app.route('/download/<file_id>', methods=['GET'])
+# def download_confirm(file_id):
+#     if 'user_email' not in session:
+#         session['redirect_after_login'] = request.path
+#         return redirect(url_for('login'))
+#
+#     doc = db.collection('files').document(file_id).get()
+#     if not doc.exists:
+#         return render_template('404.html'), 404
+#
+#     file_data = doc.to_dict()
+#     return render_template('download_confirm.html', file_id=file_id, filename=file_data.get('filename'))
+
 @app.route('/download/<file_id>', methods=['GET'])
-def download_confirm(file_id):
+def download_redirect(file_id):
     if 'user_email' not in session:
         session['redirect_after_login'] = request.path
         return redirect(url_for('login'))
+
+    # Save the file ID in session for confirmation step
+    session['pending_download'] = file_id
 
     doc = db.collection('files').document(file_id).get()
     if not doc.exists:
         return render_template('404.html'), 404
 
     file_data = doc.to_dict()
-    return render_template('download_confirm.html', file_id=file_id, filename=file_data.get('filename'))
+    return render_template('download_confirm.html', filename=file_data.get('filename'))
 
 
-# @app.route('/admin/uploads')
-# def view_uploads():
-#     if session.get('user_email') != "markpollycarp@gmail.com":
-#         abort(403)
-#
-#     uploads = db.collection('files').order_by('uploadedAt', direction=firestore.Query.DESCENDING).stream()
-#     history = []
-#     for entry in uploads:
-#         data = entry.to_dict()
-#         history.append({
-#             'filename': data.get('filename'),
-#             'owner': data.get('owner'),
-#             'timestamp': data.get('uploadedAt'),
-#             'blob_name': data.get('blob_name')
-#         })
-#
-#     return render_template('uploads.html', history=history)
+@app.route('/download/confirm', methods=['GET', 'POST'])
+def download_confirm():
+    if 'user_email' not in session:
+        session['redirect_after_login'] = url_for('download_confirm')
+        return redirect(url_for('login'))
+
+    file_id = session.get('pending_download')
+    if not file_id:
+        return redirect(url_for('dashboard'))
+
+    doc = db.collection('files').document(file_id).get()
+    if not doc.exists:
+        return render_template('404.html'), 404
+
+    file_data = doc.to_dict()
+    filename = file_data.get('filename')
+    blob_name = file_data.get('blob_name')
+
+    if request.method == 'POST':
+        blob = bucket.blob(blob_name)
+        temp_path = os.path.join('/tmp', filename)
+        blob.download_to_filename(temp_path)
+
+        # Log the download
+        db.collection('downloads').add({
+            'file_id': file_id,
+            'viewer': session['user_email'],
+            'timestamp': firestore.SERVER_TIMESTAMP
+        })
+
+        # Clean up
+        threading.Thread(
+            target=lambda: (time.sleep(5), os.remove(temp_path) if os.path.exists(temp_path) else None)).start()
+
+        flash('Download successful!')
+        return send_file(temp_path, as_attachment=True, download_name=filename)
+
+    return render_template('download_confirm.html', filename=filename)
+
+
 @app.route('/admin/uploads')
 def view_uploads():
     if session.get('user_email') != "markpollycarp@gmail.com":

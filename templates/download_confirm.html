@@ -25,12 +25,31 @@
 <body>
 
   <div class="card">
-    <h3 class="mb-4">📦 Ready to download:</h3>
+    <h3 class="mb-3">📦 Ready to download</h3>
     <h5 class="text-primary fw-semibold mb-4">{{ filename }}</h5>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-success" role="alert">
+          {{ messages[0] }}
+        </div>
+      {% endif %}
+    {% endwith %}
+
     <form method="POST">
       <button type="submit" class="btn btn-success px-4">Download Now</button>
     </form>
   </div>
+
+  <script>
+    // Optional: redirect after download
+    const alertBox = document.querySelector('.alert-success');
+    if (alertBox) {
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 3000); // 3 second delay
+    }
+  </script>
 
 </body>
 </html>
