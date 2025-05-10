@@ -153,7 +153,7 @@ def view_uploads():
     history = []
     for entry in uploads:
         data = entry.to_dict()
-        file_id = data.get('file_id')
+        file_id = entry.id
         history.append({
             'filename': data.get('filename'),
             'owner': data.get('owner'),
