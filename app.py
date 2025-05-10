@@ -250,38 +250,38 @@ def dashboard():
     return render_template('dashboard.html')
 
 
-@app.route('/download/<file_id>', methods=['POST'])
-def download(file_id):
-    if 'user_email' not in session:
-        session['redirect_after_login'] = request.path
-        return redirect(url_for('login'))
-
-    doc = db.collection('files').document(file_id).get()
-    if not doc.exists:
-        return render_template('404.html'), 404
-
-    file_data = doc.to_dict()
-    blob_name = file_data.get('blob_name')
-    original_name = file_data.get('filename')
-
-    db.collection('downloads').add({
-        'file_id': file_id,
-        'viewer': session['user_email'],
-        'timestamp': firestore.SERVER_TIMESTAMP
-    })
-
-    blob = bucket.blob(blob_name)
-    temp_path = os.path.join('/tmp', original_name)
-    blob.download_to_filename(temp_path)
-
-    def cleanup(path):
-        time.sleep(5)
-        if os.path.exists(path):
-            os.remove(path)
-
-    threading.Thread(target=cleanup, args=(temp_path,)).start()
-
-    return send_file(temp_path, as_attachment=True, download_name=original_name)
+# @app.route('/download/<file_id>', methods=['POST'])
+# def download(file_id):
+#     if 'user_email' not in session:
+#         session['redirect_after_login'] = request.path
+#         return redirect(url_for('login'))
+#
+#     doc = db.collection('files').document(file_id).get()
+#     if not doc.exists:
+#         return render_template('404.html'), 404
+#
+#     file_data = doc.to_dict()
+#     blob_name = file_data.get('blob_name')
+#     original_name = file_data.get('filename')
+#
+#     db.collection('downloads').add({
+#         'file_id': file_id,
+#         'viewer': session['user_email'],
+#         'timestamp': firestore.SERVER_TIMESTAMP
+#     })
+#
+#     blob = bucket.blob(blob_name)
+#     temp_path = os.path.join('/tmp', original_name)
+#     blob.download_to_filename(temp_path)
+#
+#     def cleanup(path):
+#         time.sleep(5)
+#         if os.path.exists(path):
+#             os.remove(path)
+#
+#     threading.Thread(target=cleanup, args=(temp_path,)).start()
+#
+#     return send_file(temp_path, as_attachment=True, download_name=original_name)
 
 
 # @app.route('/download/<file_id>', methods=['GET'])
@@ -364,85 +364,65 @@ def download_confirm_post():
 #
 #     return redirect(url_for('download_file', file_id=file_id))
 #
-#
-# @app.route('/admin/uploads')
-# def view_uploads():
-#     if session.get('user_email') != "markpollycarp@gmail.com":
-#         abort(403)
-#
-#     uploads = db.collection('files').order_by('uploadedAt', direction=firestore.Query.DESCENDING).stream()
-#     history = []
-#     for entry in uploads:
-#         data = entry.to_dict()
-#         file_id = entry.id  # ← use the document ID instead of relying on a possibly missing 'file_id'
-#         history.append({
-#             'filename': data.get('filename'),
-#             'owner': data.get('owner'),
-#             'timestamp': data.get('uploadedAt'),
-#             'link': url_for('download', file_id=file_id, _external=True)
-#         })
-#
-#     return render_template('admin_uploads.html', history=history)
+
 @app.route('/admin/uploads')
 def view_uploads():
-    admin_email = "markpollycarp@gmail.com"
-    if session.get('user_email') != admin_email:
+    if session.get('user_email') != "markpollycarp@gmail.com":
         abort(403)
 
     uploads = db.collection('files').order_by('uploadedAt', direction=firestore.Query.DESCENDING).stream()
-
     history = []
     for entry in uploads:
         data = entry.to_dict()
+        file_id = entry.id  # ← use the document ID instead of relying on a possibly missing 'file_id'
         history.append({
             'filename': data.get('filename'),
             'owner': data.get('owner'),
             'timestamp': data.get('uploadedAt'),
-            'url': data.get('url')
+            'link': url_for('download', file_id=file_id, _external=True)
         })
 
-    return render_template('uploads.html', history=history)
+    return render_template('admin_uploads.html', history=history)
 
 
-#
-# @app.route('/download/file/<file_id>')
-# def download_file(file_id):
-#     if 'user_email' not in session:
-#         session['redirect_after_login'] = request.path
-#         return redirect(url_for('login'))
-#
-#     doc = db.collection('files').document(file_id).get()
-#     if not doc.exists:
-#         return render_template('404.html'), 404
-#
-#     file_data = doc.to_dict()
-#     blob_name = file_data['blob_name']
-#     original_name = file_data['filename']
-#
-#     # Log download
-#     db.collection('downloads').add({
-#         'file_id': file_id,
-#         'viewer': session['user_email'],
-#         'timestamp': firestore.SERVER_TIMESTAMP
-#     })
-#
-#     blob = bucket.blob(blob_name)
-#     temp_path = os.path.join('/tmp', original_name)
-#     blob.download_to_filename(temp_path)
-#
-#     # Clean up after sending
-#     def cleanup(path):
-#         time.sleep(5)
-#         if os.path.exists(path):
-#             os.remove(path)
-#
-#     threading.Thread(target=cleanup, args=(temp_path,)).start()
-#
-#     # Flash download success and redirect after download
-#     response = send_file(temp_path, as_attachment=True, download_name=original_name)
-#     flash("✅ Download successful!")
-#     session['after_download_redirect'] = True  # flag to trigger message later
-#     return response
+@app.route('/download/file/<file_id>')
+def download_file(file_id):
+    if 'user_email' not in session:
+        session['redirect_after_login'] = request.path
+        return redirect(url_for('login'))
+
+    doc = db.collection('files').document(file_id).get()
+    if not doc.exists:
+        return render_template('404.html'), 404
+
+    file_data = doc.to_dict()
+    blob_name = file_data['blob_name']
+    original_name = file_data['filename']
+
+    # Log download
+    db.collection('downloads').add({
+        'file_id': file_id,
+        'viewer': session['user_email'],
+        'timestamp': firestore.SERVER_TIMESTAMP
+    })
+
+    blob = bucket.blob(blob_name)
+    temp_path = os.path.join('/tmp', original_name)
+    blob.download_to_filename(temp_path)
+
+    # Clean up after sending
+    def cleanup(path):
+        time.sleep(5)
+        if os.path.exists(path):
+            os.remove(path)
+
+    threading.Thread(target=cleanup, args=(temp_path,)).start()
+
+    # Flash download success and redirect after download
+    response = send_file(temp_path, as_attachment=True, download_name=original_name)
+    flash("✅ Download successful!")
+    session['after_download_redirect'] = True  # flag to trigger message later
+    return response
 
 
 @app.route('/logout')
