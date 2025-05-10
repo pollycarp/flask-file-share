@@ -64,198 +64,61 @@ def get_redirect():
     return jsonify({'next': next_url})
 
 
-# @app.route('/dashboard', methods=['GET', 'POST'])
-# def dashboard():
-#     if 'user_email' not in session:
-#         return redirect(url_for('login'))
-#
-#     if request.method == 'POST':
-#         file = request.files['file']
-#         if file:
-#             filename = secure_filename(file.filename)
-#             local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-#             file.save(local_path)
-#
-#             # Upload to Firebase Storage
-#             blob = bucket.blob(f'files/{uuid.uuid4()}_{filename}')
-#             blob.upload_from_filename(local_path)
-#             blob.make_public()
-#             file_url = blob.public_url
-#
-#             # Save file info in Firestore
-#             file_id = str(uuid.uuid4())
-#             db.collection('files').document(file_id).set({
-#                 'filename': filename,
-#                 'url': file_url,
-#                 'owner': session['user_email'],
-#                 'uploadedAt': firestore.SERVER_TIMESTAMP
-#             })
-#
-#             # Generate a shareable link
-#             link = url_for('download', file_id=file_id, _external=True)
-#             return render_template('dashboard.html', link=link)
-#
-#     return render_template('dashboard.html')
-
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
     if 'user_email' not in session:
         return redirect(url_for('login'))
 
     if request.method == 'POST':
-        try:
-            file = request.files['file']
-            if file:
-                # Ensure safe file name
-                filename = secure_filename(file.filename)
+        file = request.files['file']
+        if file:
+            filename = secure_filename(file.filename)
+            local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(local_path)
 
-                # Use /tmp folder for file saving in Render
-                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(local_path)
+            # Upload to Firebase Storage
+            blob = bucket.blob(f'files/{uuid.uuid4()}_{filename}')
+            blob.upload_from_filename(local_path)
+            blob.make_public()
+            file_url = blob.public_url
 
-                # Generate unique blob name
-                blob_name = f"{uuid.uuid4()}_{filename}"
+            # Save file info in Firestore
+            file_id = str(uuid.uuid4())
+            db.collection('files').document(file_id).set({
+                'filename': filename,
+                'url': file_url,
+                'owner': session['user_email'],
+                'uploadedAt': firestore.SERVER_TIMESTAMP
+            })
 
-                # Upload to Firebase Storage
-                blob = bucket.blob(blob_name)
-                blob.upload_from_filename(local_path)
-
-                # Save metadata to Firestore
-                file_id = str(uuid.uuid4())
-                db.collection('files').document(file_id).set({
-                    'file_id': file_id,
-                    'original_name': filename,
-                    'blob_name': blob_name,
-                    'owner': session['user_email'],
-                    'uploadedAt': firestore.SERVER_TIMESTAMP
-                })
-
-                flash("✅ File uploaded successfully.")
-                return redirect(url_for('dashboard'))
-
-        except Exception as e:
-            print(f"[UPLOAD ERROR] {e}")
-            flash("❌ Upload failed. Please try again.")
+            # Generate a shareable link
+            link = url_for('download', file_id=file_id, _external=True)
+            return render_template('dashboard.html', link=link)
 
     return render_template('dashboard.html')
 
 
-# @app.route('/download/<file_id>')
-# def download(file_id):
-#     if 'user_email' not in session:
-#         session['redirect_after_login'] = request.path  # store intended path
-#         return redirect(url_for('login'))
-#
-#     # Fetch file info
-#     doc = db.collection('files').document(file_id).get()
-#     if doc.exists:
-#         file_data = doc.to_dict()
-#
-#         # Log viewer info
-#         db.collection('downloads').add({
-#             'file_id': file_id,
-#             'viewer': session['user_email'],
-#             'timestamp': firestore.SERVER_TIMESTAMP
-#         })
-#
-#         return redirect(file_data['url'])
-#     else:
-#         return render_template('404.html'), 404
-@app.route('/download/<file_id>', methods=['GET', 'POST'])
+@app.route('/download/<file_id>')
 def download(file_id):
     if 'user_email' not in session:
+        session['redirect_after_login'] = request.path  # store intended path
         return redirect(url_for('login'))
 
     # Fetch file info
     doc = db.collection('files').document(file_id).get()
-    if not doc.exists:
-        flash("File not found.")
-        return redirect(url_for('dashboard'))
+    if doc.exists:
+        file_data = doc.to_dict()
 
-    file_data = doc.to_dict()
-    blob_name = file_data.get('blob_name')
-    original_name = file_data.get('original_name')
+        # Log viewer info
+        db.collection('downloads').add({
+            'file_id': file_id,
+            'viewer': session['user_email'],
+            'timestamp': firestore.SERVER_TIMESTAMP
+        })
 
-    # Download blob to temp file
-    blob = bucket.blob(blob_name)
-    temp_path = os.path.join('/tmp', original_name)
-    blob.download_to_filename(temp_path)
-
-    # Clean up temp file in background after download
-    def cleanup(path):
-        time.sleep(5)
-        if os.path.exists(path):
-            os.remove(path)
-    threading.Thread(target=cleanup, args=(temp_path,)).start()
-
-    return send_file(temp_path, as_attachment=True, download_name=original_name)
-
-# @app.route('/downloads')
-# def downloads():
-#     if 'user_email' not in session:
-#         return redirect(url_for('login'))
-#
-#     docs = db.collection('files').order_by('uploadedAt', direction=firestore.Query.DESCENDING).stream()
-#     files = []
-#     for doc in docs:
-#         data = doc.to_dict()
-#         files.append({
-#             'original_name': data['original_name'],
-#             'blob_name': data['blob_name']
-#         })
-#     return render_template('downloads.html', files=files)
-
-
-# @app.route('/download/<blob_name>', methods=['POST'])
-# def download_file(blob_name):
-#     if 'user_email' not in session:
-#         return redirect(url_for('login'))
-#
-#     original_name = blob_name.split("_", 1)[-1]
-#     local_path = os.path.join(app.config['UPLOAD_FOLDER'], original_name)
-#
-#     # Download from Firebase
-#     blob = bucket.blob(blob_name)
-#     blob.download_to_filename(local_path)
-#
-#     flash(f"Download successful! File: {original_name}")
-#
-#     # Send the file, then delete the temp file in background
-#     def cleanup():
-#         time.sleep(5)
-#         if os.path.exists(local_path):
-#             os.remove(local_path)
-#
-#     threading.Thread(target=cleanup).start()
-#
-#     return send_file(local_path, as_attachment=True, download_name=original_name)
-
-
-# @app.route('/admin/downloads')
-# def view_downloads():
-#     admin_email = "markpollycarp@gmail.com"
-#     if session.get('user_email') != admin_email:
-#         abort(403)
-#
-#     downloads = db.collection('downloads').order_by('timestamp', direction=firestore.Query.DESCENDING).stream()
-#
-#     history = []
-#     for entry in downloads:
-#         data = entry.to_dict()
-#         file_id = data.get('file_id')
-#         viewer = data.get('viewer')
-#         timestamp = data.get('timestamp')
-#
-#         file_doc = db.collection('files').document(file_id).get()
-#         filename = file_doc.to_dict().get('filename') if file_doc.exists else '[Deleted]'
-#
-#         history.append({
-#             'filename': filename,
-#             'viewer': viewer,
-#             'timestamp': timestamp
-#         })
-#
-#     return render_template('downloads.html', history=history)
+        return redirect(file_data['url'])
+    else:
+        return render_template('404.html'), 404
 
 
 @app.route('/admin/uploads')
