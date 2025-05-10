@@ -15,6 +15,12 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "supersecretkey")
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
+# Configuration
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # ✅ Ensure uploads folder exists
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
 # Initialize Firebase Admin
 # cred = credentials.Certificate("/var/render/secrets/firebase_key_json")
 cred = credentials.Certificate("/etc/secrets/firebase_key_json")
