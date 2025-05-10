@@ -296,6 +296,23 @@ def download_confirm(file_id):
     return render_template('download_confirm.html', file_id=file_id, filename=file_data.get('filename'))
 
 
+# @app.route('/admin/uploads')
+# def view_uploads():
+#     if session.get('user_email') != "markpollycarp@gmail.com":
+#         abort(403)
+#
+#     uploads = db.collection('files').order_by('uploadedAt', direction=firestore.Query.DESCENDING).stream()
+#     history = []
+#     for entry in uploads:
+#         data = entry.to_dict()
+#         history.append({
+#             'filename': data.get('filename'),
+#             'owner': data.get('owner'),
+#             'timestamp': data.get('uploadedAt'),
+#             'blob_name': data.get('blob_name')
+#         })
+#
+#     return render_template('uploads.html', history=history)
 @app.route('/admin/uploads')
 def view_uploads():
     if session.get('user_email') != "markpollycarp@gmail.com":
@@ -305,11 +322,12 @@ def view_uploads():
     history = []
     for entry in uploads:
         data = entry.to_dict()
+        file_id = data.get('file_id')
         history.append({
             'filename': data.get('filename'),
             'owner': data.get('owner'),
             'timestamp': data.get('uploadedAt'),
-            'blob_name': data.get('blob_name')
+            'link': url_for('download_confirm', file_id=file_id, _external=True)
         })
 
     return render_template('uploads.html', history=history)

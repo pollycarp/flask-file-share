@@ -5,15 +5,30 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse justify-content-end" id="navbarToggler">
-      <ul class="navbar-nav">
+      <ul class="navbar-nav align-items-center">
+
         <li class="nav-item">
           <a href="/" class="nav-link">Home</a>
         </li>
-        {% if session.user_email %}
+
+        {% if session.get('user_email') %}
         <li class="nav-item">
-          <a href="/logout" class="nav-link">Logout</a>
+          <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
         </li>
         {% endif %}
+
+        {% if session.get('user_email') == 'markpollycarp@gmail.com' %}
+        <li class="nav-item">
+          <a href="{{ url_for('view_uploads') }}" class="nav-link text-warning fw-semibold">Admin Uploads</a>
+        </li>
+        {% endif %}
+
+        {% if session.get('user_email') %}
+        <li class="nav-item">
+          <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+        </li>
+        {% endif %}
+
         <li class="nav-item">
           <button id="toggle-theme" class="btn btn-sm btn-outline-secondary ms-3">🌓 Dark Mode</button>
         </li>
